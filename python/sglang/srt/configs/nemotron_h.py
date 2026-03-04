@@ -15,9 +15,9 @@
 
 """NemotronH model configuration"""
 
-import regex as re
 from transformers.configuration_utils import PretrainedConfig
 from transformers.utils import logging
+
 from sglang.srt.configs.mamba_utils import (
     Mamba2CacheParams,
     Mamba2StateShape,
@@ -151,7 +151,9 @@ class NemotronHConfig(PretrainedConfig):
     keys_to_ignore_at_inference = ["past_key_values"]
 
     @staticmethod
-    def _validate_layers_block_type(layers_block_type, expected_length=None, param_name="layers_block_type"):
+    def _validate_layers_block_type(
+        layers_block_type, expected_length=None, param_name="layers_block_type"
+    ):
         """
         Validate layers_block_type list.
         Args:
@@ -162,15 +164,21 @@ class NemotronHConfig(PretrainedConfig):
             ValueError: If validation fails
         """
         if not isinstance(layers_block_type, list):
-            raise ValueError(f"{param_name} must be a list of strings. Got type: {type(layers_block_type)}")
+            raise ValueError(
+                f"{param_name} must be a list of strings. Got type: {type(layers_block_type)}"
+            )
 
         if expected_length is not None and len(layers_block_type) != expected_length:
-            raise ValueError(f"{param_name} must have length {expected_length}. Got length {len(layers_block_type)}.")
+            raise ValueError(
+                f"{param_name} must have length {expected_length}. Got length {len(layers_block_type)}."
+            )
 
         valid_types = {"mamba", "attention", "moe"}
         if not all(block_type in valid_types for block_type in layers_block_type):
             invalid = set(layers_block_type) - valid_types
-            raise ValueError(f"{param_name} contains invalid types: {invalid}. Must be one of: {valid_types}")
+            raise ValueError(
+                f"{param_name} contains invalid types: {invalid}. Must be one of: {valid_types}"
+            )
 
     def __init__(
         self,
@@ -254,7 +262,10 @@ class NemotronHConfig(PretrainedConfig):
         # Always pop mtp_hybrid_override_pattern from kwargs to prevent it from being set as an attribute
         if "mtp_hybrid_override_pattern" in kwargs:
             pattern = kwargs.pop("mtp_hybrid_override_pattern")
-            if mtp_layers_block_type is None or mtp_layers_block_type == ["attention", "moe"]:
+            if mtp_layers_block_type is None or mtp_layers_block_type == [
+                "attention",
+                "moe",
+            ]:
                 mtp_layers_block_type = self._pattern_to_list(pattern)
 
         self.vocab_size = vocab_size
@@ -269,7 +280,9 @@ class NemotronHConfig(PretrainedConfig):
         self.hidden_dropout = hidden_dropout
 
         # Validate layers_block_type (no longer checking length against num_hidden_layers)
-        self._validate_layers_block_type(layers_block_type, expected_length=None, param_name="layers_block_type")
+        self._validate_layers_block_type(
+            layers_block_type, expected_length=None, param_name="layers_block_type"
+        )
         self.layers_block_type = layers_block_type
         # for backward compatibility
         if num_key_value_heads is None:
@@ -325,7 +338,9 @@ class NemotronHConfig(PretrainedConfig):
                     "Please provide an explicit list of layer types for MTP layers. "
                     "Example: mtp_layers_block_type=['attention', 'moe']"
                 )
-            self._validate_layers_block_type(mtp_layers_block_type, None, "mtp_layers_block_type")
+            self._validate_layers_block_type(
+                mtp_layers_block_type, None, "mtp_layers_block_type"
+            )
         self.mtp_layers_block_type = mtp_layers_block_type
 
         super().__init__(
@@ -370,7 +385,6 @@ class NemotronHConfig(PretrainedConfig):
             shape=shape, layers=self.mamba_layer_ids, dtype=mamba2_state_dtype(self)
         )
 
-
     @property
     def num_hidden_layers(self) -> int:
         """
@@ -395,6 +409,14 @@ class NemotronHConfig(PretrainedConfig):
         Returns the pattern string representation of layers_block_type.
         """
         return self._list_to_pattern(self.layers_block_type)
+
+    @hybrid_override_pattern.setter
+    def hybrid_override_pattern(self, value):
+        """
+        Setter for backward compatibility when loading configs.
+        The value is ignored since hybrid_override_pattern is computed from layers_block_type.
+        """
+        self.layers_block_type = self._pattern_to_list(value)
 
     @property
     def mtp_hybrid_override_pattern(self) -> str:
